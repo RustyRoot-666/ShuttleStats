@@ -1,5 +1,9 @@
 FROM php:8.3-apache
 
+# Pastikan hanya satu MPM aktif (prefork, sesuai mod_php)
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
+    && a2enmod mpm_prefork
+
 # Ekstensi untuk MySQL (opsional). pdo_sqlite, mbstring, xml sudah bawaan image.
 RUN docker-php-ext-install pdo_mysql
 
