@@ -1,21 +1,16 @@
-FROM php:8.3-apache
+FROM php:8.3-cli
 
-# Pastikan hanya satu MPM aktif (prefork, sesuai mod_php)
-RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
-    && a2enmod mpm_prefork
-
-# Ekstensi untuk MySQL (opsional). pdo_sqlite, mbstring, xml sudah bawaan image.
+# Ekstensi MySQL (opsional). pdo_sqlite, mbstring, xml sudah bawaan image.
 RUN docker-php-ext-install pdo_mysql
 
 # Batas upload sesuai aplikasi (5 MB) + sedikit ruang
 RUN { echo "upload_max_filesize=6M"; echo "post_max_size=8M"; } > /usr/local/etc/php/conf.d/uploads.ini
 
-WORKDIR /var/www/html
-COPY . /var/www/html/
+WORKDIR /app
+COPY . /app/
 
-# Folder data lokal tidak dipakai di produksi (DB ada di Volume /data)
-RUN rm -rf /var/www/html/data && mkdir -p /data \
-    && chown -R www-data:www-data /var/www/html /data
+# Lokasi Volume Railway untuk database SQLite
+RUN mkdir -p /data
 
-# Railway memberi port lewat variabel $PORT
-CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen ${PORT:-8080}/\" /etc/apache2/ports.conf && sed -i \"s/<VirtualHost \\*:80>/<VirtualHost *:${PORT:-8080}>/\" /etc/apache2/sites-available/000-default.conf && mkdir -p /data && chown -R www-data:www-data /data && exec apache2-foreground"]
+# Server bawaan PHP, 4 worker, port dari Railway ($PORT)
+CMD ["sh", "-c", "mkdir -p /data && PHP_CLI_SERVER_WORKERS=4 exec php -S 0.0.0.0:${PORT:-8080} -t /app"]
